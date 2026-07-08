@@ -1,0 +1,148 @@
+[rule_pack]
+id = "final-state-residue"
+version = "0.1.0"
+description = "Built-in rules for detecting AI authoring residue in final-state Markdown."
+
+[[rules]]
+id = "revision_trace"
+message = "Looks like revision history rather than final-state documentation."
+allow_in_allowed_sections = true
+patterns = [
+  "已移除",
+  "已删除",
+  "已调整",
+  "已修正",
+  "修正为",
+  "调整为",
+  "改成",
+  "has been removed",
+  "was removed",
+  "removed from",
+  "updated from",
+  "fixed by",
+  "dropped\\b",
+]
+
+[rules.severity]
+default = "warning"
+public-api-doc = "error"
+access-guide = "error"
+implementation-plan = "error"
+issue-description = "error"
+adr = "suggestion"
+runbook = "warning"
+unknown = "warning"
+
+[[rules]]
+id = "rejected_prior_solution"
+message = "Looks like rejected or prior design context."
+allow_in_allowed_sections = true
+patterns = [
+  "之前方案",
+  "上一版",
+  "旧方案",
+  "原方案",
+  "历史方案",
+  "这里不采用",
+  "不采用该方案",
+  "previous (design|approach|version)",
+  "old (design|approach)",
+  "rejected (design|approach|alternative)",
+  "not adopted",
+  "formerly\\b",
+  "former version",
+  "prior version",
+  "legacy (field|design|approach)",
+  "deprecated",
+  "superseded",
+  "replaced by",
+  "renamed from",
+  "originally",
+]
+
+[rules.severity]
+default = "warning"
+public-api-doc = "error"
+access-guide = "error"
+implementation-plan = "error"
+issue-description = "error"
+adr = "suggestion"
+runbook = "suggestion"
+unknown = "warning"
+
+[[rules]]
+id = "self_correction"
+message = "Looks like self-correction language."
+patterns = [
+  "更正",
+  "纠正",
+  "修正说明",
+  "前面.*错误",
+  "此前.*错误",
+  "不是.*而是",
+  "correction",
+  "corrected",
+]
+
+[rules.severity]
+default = "warning"
+public-api-doc = "error"
+access-guide = "error"
+implementation-plan = "error"
+issue-description = "error"
+adr = "warning"
+runbook = "warning"
+unknown = "warning"
+
+[[rules]]
+id = "internal_authoring_process"
+message = "Looks like internal authoring process leaking into the document."
+patterns = [
+  "为了避免.*误解",
+  "为了避免.*上一",
+  "为避免.*再次",
+  "按你的反馈",
+  "根据反馈",
+  "as requested",
+  "based on feedback",
+  "to avoid confusion",
+  "draft residue",
+  "drafting history",
+  "draft note",
+  "草稿痕迹",
+  "草稿说明",
+]
+
+[rules.severity]
+default = "warning"
+public-api-doc = "error"
+access-guide = "error"
+implementation-plan = "error"
+issue-description = "error"
+adr = "warning"
+runbook = "warning"
+unknown = "warning"
+
+[[rules]]
+id = "negative_constraint"
+message = "Negative constraint detected; verify it belongs in this document type and section."
+allow_in_allowed_sections = true
+patterns = [
+  "\\bdo not\\b",
+  "\\bdon't\\b",
+  "\\bmust not\\b",
+  "\\bno\\b(?!\\s+(?:longer|more)\\s+than)",
+  "不要",
+  "不得",
+  "禁止",
+]
+
+[rules.severity]
+default = "suggestion"
+public-api-doc = "suggestion"
+access-guide = "suggestion"
+implementation-plan = "suggestion"
+issue-description = "suggestion"
+adr = "off"
+runbook = "off"
+unknown = "suggestion"

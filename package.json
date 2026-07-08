@@ -5,6 +5,14 @@
   "type": "module",
   "license": "MIT",
   "author": "zlh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ztcshen/markdown-gate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ztcshen/markdown-gate/issues"
+  },
+  "homepage": "https://github.com/ztcshen/markdown-gate#readme",
   "keywords": [
     "markdown",
     "promptfoo",
@@ -24,19 +32,25 @@
     "evals",
     "rules",
     "README.md",
-    "LICENSE"
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "SECURITY.md"
   ],
   "engines": {
     "node": "^20.20.0 || >=22.22.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "audit:high": "npm audit --audit-level=high",
     "check": "npm run typecheck && npm run lint && npm test",
     "eval": "promptfoo eval -c evals/promptfooconfig.yaml",
     "eval:llm": "promptfoo eval -c evals/promptfooconfig.llm.yaml",
     "format": "biome format --write .",
     "lint": "biome check .",
+    "pack:dry-run": "npm pack --dry-run",
     "prepack": "npm run build",
+    "rules:check": "tsx src/cli.ts rules check",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
