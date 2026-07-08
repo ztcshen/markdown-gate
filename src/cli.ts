@@ -8,6 +8,7 @@ import { runStop } from "./hooks/stop.js";
 import { installCodexHooks, installGlobalCodexHooks } from "./install.js";
 import { parseSeverity, type Severity } from "./model.js";
 import { renderJson, renderText } from "./report.js";
+import { builtinRulePackPath, loadRulePack, validateRulePack } from "./rules.js";
 
 interface ParsedArgs {
   command?: string;
@@ -32,6 +33,9 @@ export async function main(
     }
     if (args.command === "hook") {
       return runHook(args, stdin);
+    }
+    if (args.command === "rules") {
+      return runRules(args);
     }
     printHelp();
     return 2;
@@ -119,6 +123,18 @@ function runHook(args: ParsedArgs, stdin: string): number {
   return 0;
 }
 
+function runRules(args: ParsedArgs): number {
+  const subcommand = args.positionals[0];
+  if (subcommand !== "check") {
+    throw new Error("rules subcommand must be: check");
+  }
+  const path = stringFlag(args, "rule-pack") ?? builtinRulePackPath();
+  const rulePack = loadRulePack(path);
+  validateRulePack(rulePack);
+  console.log(`rules: PASS ${path} (${rulePack.rules.length} rules)`);
+  return 0;
+}
+
 function parseArgs(argv: string[]): ParsedArgs {
   const [command, ...rest] = argv;
   const flags: Record<string, string | boolean> = {};
@@ -176,6 +192,7 @@ Usage:
   markdown-gate classify [--stdin] [--type TYPE] [--format text|json] [paths...]
   markdown-gate install-codex-hooks [--repo-root PATH] [--global] [--codex-home PATH] [--force]
   markdown-gate hook pre-tool-use|post-tool-use|stop
+  markdown-gate rules check [--rule-pack PATH]
 `);
 }
 

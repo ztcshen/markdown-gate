@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ztcshen/markdown-gate/rules/schema.json",
+  "title": "markdown-gate rule pack",
+  "type": "object",
+  "required": ["rule_pack", "rules"],
+  "additionalProperties": false,
+  "properties": {
+    "rule_pack": {
+      "type": "object",
+      "required": ["id", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "version": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "message", "patterns", "severity"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "patterns": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "allow_in_allowed_sections": {
+            "type": "boolean"
+          },
+          "severity": {
+            "type": "object",
+            "required": ["default"],
+            "additionalProperties": {
+              "enum": ["off", "suggestion", "warning", "error"]
+            },
+            "properties": {
+              "default": {
+                "enum": ["off", "suggestion", "warning", "error"]
+              },
+              "public-api-doc": {
+                "enum": ["off", "suggestion", "warning", "error"]
+              },
+              "access-guide": {
+                "enum": ["off", "suggestion", "warning", "error"]
+              },
+              "implementation-plan": {
+                "enum": ["off", "suggestion", "warning", "error"]
+              },
+              "issue-description": {
+                "enum": ["off", "suggestion", "warning", "error"]
+              },
+              "adr": {
+                "enum": ["off", "suggestion", "warning", "error"]
+              },
+              "runbook": {
+                "enum": ["off", "suggestion", "warning", "error"]
+              },
+              "unknown": {
+                "enum": ["off", "suggestion", "warning", "error"]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

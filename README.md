@@ -16,6 +16,7 @@ npm run build
 node dist/cli.js check docs/api/withdraw.md
 node dist/cli.js check --type issue-description --stdin < issue.md
 node dist/cli.js check --format json docs
+npm run rules:check
 ```
 
 Exit codes:
@@ -72,6 +73,27 @@ Run the optional LLM judge suite when model credentials are available:
 ```bash
 OPENAI_API_KEY=... npm run eval:llm
 ```
+
+## Rule Packs
+
+The scanner engine does not hard-code final-state residue phrases. Built-in
+rules live in `rules/builtin/final-state-residue.toml` and are validated by:
+
+```bash
+npm run rules:check
+```
+
+Each rule defines:
+
+- a stable `id`
+- a reader-facing `message`
+- regex `patterns`
+- per-document-type severity
+- whether the rule is allowed inside document-type allowed sections
+
+`rules/schema.json` documents the rule pack shape for external rule authors.
+The public compatibility surface is rule IDs, document type names, exit codes,
+and the JSON report contract.
 
 ## Waivers
 
@@ -131,3 +153,17 @@ Hook coverage:
 The public contract is the CLI, exit codes, JSON report format, config shape,
 document type names, and rule IDs. The scanner implementation can evolve behind
 that contract.
+
+## GitHub Gates
+
+The GitHub Actions workflow runs:
+
+```bash
+npm ci
+npm run check
+npm run rules:check
+npm run build
+npm run eval
+npm run pack:dry-run
+npm run audit:high
+```

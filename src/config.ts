@@ -3,6 +3,7 @@ import { parse as parseToml } from "smol-toml";
 import { globMatches, normalizePathForMatch } from "./glob.js";
 import type { DocumentType, Severity } from "./model.js";
 import { parseSeverity, validateDocType } from "./model.js";
+import { type CompiledRule, loadBuiltinRules, severityDefaultsFromRules } from "./rules.js";
 
 export const DEFAULT_PATH_TYPES: Record<string, DocumentType> = {
   "docs/api/**": "public-api-doc",
@@ -35,66 +36,16 @@ export const DEFAULT_ALLOWED_SECTIONS: Partial<Record<DocumentType, string[]>> =
   runbook: ["warnings", "safety", "rollback", "risks", "constraints", "do not"],
 };
 
-export const DEFAULT_SEVERITIES: Record<DocumentType, Record<string, Severity>> = {
-  "public-api-doc": {
-    revision_trace: "error",
-    rejected_prior_solution: "error",
-    self_correction: "error",
-    internal_authoring_process: "error",
-    negative_constraint: "suggestion",
-  },
-  "access-guide": {
-    revision_trace: "error",
-    rejected_prior_solution: "error",
-    self_correction: "error",
-    internal_authoring_process: "error",
-    negative_constraint: "suggestion",
-  },
-  "implementation-plan": {
-    revision_trace: "error",
-    rejected_prior_solution: "error",
-    self_correction: "error",
-    internal_authoring_process: "error",
-    negative_constraint: "suggestion",
-  },
-  "issue-description": {
-    revision_trace: "error",
-    rejected_prior_solution: "error",
-    self_correction: "error",
-    internal_authoring_process: "error",
-    negative_constraint: "suggestion",
-  },
-  adr: {
-    revision_trace: "suggestion",
-    rejected_prior_solution: "suggestion",
-    self_correction: "warning",
-    internal_authoring_process: "warning",
-    negative_constraint: "off",
-  },
-  runbook: {
-    revision_trace: "warning",
-    rejected_prior_solution: "suggestion",
-    self_correction: "warning",
-    internal_authoring_process: "warning",
-    negative_constraint: "off",
-  },
-  unknown: {
-    revision_trace: "warning",
-    rejected_prior_solution: "warning",
-    self_correction: "warning",
-    internal_authoring_process: "warning",
-    negative_constraint: "suggestion",
-  },
-};
-
 export interface GateConfig {
   failOn: Severity;
   pathTypes: Record<string, DocumentType>;
   allowedSections: Partial<Record<DocumentType, Set<string>>>;
   severities: Record<DocumentType, Record<string, Severity>>;
+  rules: CompiledRule[];
 }
 
 export function createDefaultConfig(): GateConfig {
+  const rules = loadBuiltinRules();
   const allowedSections: Partial<Record<DocumentType, Set<string>>> = {};
   for (const [docType, sections] of Object.entries(DEFAULT_ALLOWED_SECTIONS)) {
     allowedSections[docType as DocumentType] = new Set(sections.map(normalizeSection));
@@ -104,7 +55,8 @@ export function createDefaultConfig(): GateConfig {
     failOn: "error",
     pathTypes: { ...DEFAULT_PATH_TYPES },
     allowedSections,
-    severities: structuredClone(DEFAULT_SEVERITIES),
+    severities: severityDefaultsFromRules(rules),
+    rules,
   };
 }
 
@@ -204,9 +156,6 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 }
 
 export function assertKnownDocTypes(): void {
-  for (const docType of Object.keys(DEFAULT_SEVERITIES)) {
-    validateDocType(docType);
-  }
   for (const docType of Object.values(DEFAULT_PATH_TYPES)) {
     validateDocType(docType);
   }

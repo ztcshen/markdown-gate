@@ -23,8 +23,11 @@ Run before committing:
 
 ```bash
 npm run check
+npm run rules:check
 npm run build
 npm run eval
+npm run pack:dry-run
+npm run audit:high
 node dist/cli.js check tests/fixtures/api_clean.md tests/fixtures/adr_allowed.md
 node dist/cli.js check tests/fixtures/api_dirty.md
 node dist/cli.js install-codex-hooks --force
