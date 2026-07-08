@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -12,6 +11,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from markdown_gate.hook_output import empty, stop_block
+from markdown_gate.hook_runtime import combined_output, run_markdown_gate
 
 
 def main() -> int:
@@ -27,28 +27,23 @@ def main() -> int:
     last_message = str(payload.get("last_assistant_message") or payload.get("message") or "")
     markdown = _extract_markdown(last_message)
     if markdown:
-        result = subprocess.run(
+        result = run_markdown_gate(
+            REPO_ROOT,
             [
-                sys.executable,
-                "-m",
-                "markdown_gate",
                 "check",
                 "--stdin",
                 "--type",
                 str(payload.get("markdown_gate_doc_type") or "unknown"),
             ],
-            input=markdown,
             cwd=cwd,
-            text=True,
-            capture_output=True,
-            check=False,
+            input_text=markdown,
         )
         if result.returncode != 0:
             print(
                 stop_block(
                     "markdown-gate blocked final Markdown delivery. "
                     "Revise the Markdown and rerun the check.",
-                    result.stdout,
+                    combined_output(result),
                 )
             )
         else:

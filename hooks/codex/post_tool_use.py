@@ -13,6 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from markdown_gate.hook_output import empty, post_tool_block
+from markdown_gate.hook_runtime import combined_output, run_markdown_gate
 
 
 def main() -> int:
@@ -26,19 +27,13 @@ def main() -> int:
     if not markdown_paths:
         return _ok()
 
-    result = subprocess.run(
-        [sys.executable, "-m", "markdown_gate", "check", *markdown_paths],
-        cwd=cwd,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    result = run_markdown_gate(REPO_ROOT, ["check", *markdown_paths], cwd=cwd)
     if result.returncode != 0:
         print(
             post_tool_block(
                 "markdown-gate found final-state hygiene issues. "
                 "Revise the Markdown and rerun the check.",
-                result.stdout,
+                combined_output(result),
             )
         )
     else:

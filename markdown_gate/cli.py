@@ -6,7 +6,7 @@ import sys
 
 from .classifier import classify_document
 from .config import GateConfig, load_config
-from .install import install_codex_hooks
+from .install import install_codex_hooks, install_global_codex_hooks
 from .model import Document, ScanResult, Severity
 from .report import render_json, render_text
 from .scanner import scan_documents
@@ -71,9 +71,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     install = subparsers.add_parser(
         "install-codex-hooks",
-        help="write project-level .codex/hooks.json for this repository",
+        help="write Codex hooks config for this repository or globally",
     )
     install.add_argument("--repo-root", default=".", help="repository root")
+    install.add_argument(
+        "--global",
+        dest="global_install",
+        action="store_true",
+        help="write ~/.codex/hooks.json with absolute markdown-gate script paths",
+    )
+    install.add_argument(
+        "--codex-home",
+        default="~/.codex",
+        help="Codex home for --global installs",
+    )
     install.add_argument("--force", action="store_true", help="replace an existing file")
 
     return parser
@@ -124,7 +135,15 @@ def run_classify(args: argparse.Namespace) -> int:
 
 
 def run_install_codex_hooks(args: argparse.Namespace) -> int:
-    target = install_codex_hooks(Path(args.repo_root).resolve(), force=args.force)
+    repo_root = Path(args.repo_root).resolve()
+    if args.global_install:
+        target = install_global_codex_hooks(
+            Path(args.codex_home).expanduser(),
+            source_root=repo_root,
+            force=args.force,
+        )
+    else:
+        target = install_codex_hooks(repo_root, force=args.force)
     print(f"installed Codex hooks: {target}")
     return 0
 

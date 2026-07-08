@@ -140,6 +140,34 @@ class HookTest(unittest.TestCase):
         payload = json.loads(result.stdout)
         self.assertEqual(payload["decision"], "block")
 
+    def test_pre_tool_use_runs_gate_from_external_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=workspace, check=True)
+            doc = workspace / "docs" / "api" / "withdraw.md"
+            doc.parent.mkdir(parents=True)
+            doc.write_text(
+                "# Withdraw API\n\n"
+                "The previous design used old_field, but it has been removed.\n",
+                encoding="utf-8",
+            )
+
+            result = run_hook(
+                "pre_tool_use.py",
+                {
+                    "hook_event_name": "PreToolUse",
+                    "cwd": str(workspace),
+                    "tool_name": "Bash",
+                    "tool_input": {"command": "docs publish"},
+                },
+            )
+
+        self.assertEqual(result.returncode, 0)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["decision"], "block")
+        reason = payload["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("rejected_prior_solution", reason)
+
     def test_post_tool_use_bash_checks_changed_markdown(self) -> None:
         path = ROOT / "tests" / "tmp_hook_bash_dirty.md"
         path.write_text(
@@ -187,6 +215,37 @@ class HookTest(unittest.TestCase):
             self.assertTrue(target.exists())
             payload = json.loads(target.read_text(encoding="utf-8"))
             self.assertIn("PreToolUse", payload["hooks"])
+            command = payload["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+            self.assertIn("git rev-parse --show-toplevel", command)
+
+    def test_install_global_codex_hooks_uses_absolute_script_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            codex_home = Path(directory) / "codex-home"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "markdown_gate",
+                    "install-codex-hooks",
+                    "--global",
+                    "--codex-home",
+                    str(codex_home),
+                    "--repo-root",
+                    str(ROOT),
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                check=False,
+                env={**os.environ, "PYTHONPATH": str(ROOT)},
+            )
+
+            target = codex_home / "hooks.json"
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(target.read_text(encoding="utf-8"))
+            command = payload["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+            self.assertIn(str(ROOT / "hooks" / "codex" / "pre_tool_use.py"), command)
+            self.assertNotIn("git rev-parse --show-toplevel", command)
 
 
 if __name__ == "__main__":

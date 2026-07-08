@@ -104,3 +104,12 @@ python3 -m markdown_gate install-codex-hooks --force
 
 This writes `.codex/hooks.json` in the current repository. Codex will still ask
 you to trust non-managed command hooks before running them.
+
+Install globally with:
+
+```bash
+python3 -m markdown_gate install-codex-hooks --global --force
+```
+
+Global hooks are written to `~/.codex/hooks.json` and use absolute paths to this
+repository's hook scripts, so they can run from other Codex workspaces.

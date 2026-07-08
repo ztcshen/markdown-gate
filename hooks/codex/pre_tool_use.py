@@ -14,6 +14,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from markdown_gate.hook_output import empty, pre_tool_deny
+from markdown_gate.hook_runtime import combined_output, run_markdown_gate
 
 
 PUBLISH_COMMAND_MARKERS = (
@@ -33,15 +34,12 @@ def main() -> int:
         markdown_paths = _publish_scope(cwd, command)
         if not markdown_paths:
             return _allow()
-        result = subprocess.run(
-            [sys.executable, "-m", "markdown_gate", "check", *markdown_paths],
-            cwd=cwd,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        result = run_markdown_gate(REPO_ROOT, ["check", *markdown_paths], cwd=cwd)
         if result.returncode != 0:
-            return _deny("Markdown gate failed before publish command.", result.stdout)
+            return _deny(
+                "Markdown gate failed before publish command.",
+                combined_output(result),
+            )
 
     return _allow()
 
