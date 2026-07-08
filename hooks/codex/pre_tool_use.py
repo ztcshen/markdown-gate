@@ -3,10 +3,17 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from markdown_gate.hook_output import empty, pre_tool_deny
 
 
 PUBLISH_COMMAND_MARKERS = (
@@ -19,15 +26,16 @@ PUBLISH_COMMAND_MARKERS = (
 
 def main() -> int:
     payload = _read_payload()
+    cwd = Path(str(payload.get("cwd") or Path.cwd()))
     command = _extract_command(payload)
 
     if command and any(marker in command for marker in PUBLISH_COMMAND_MARKERS):
-        markdown_paths = _publish_scope()
+        markdown_paths = _publish_scope(cwd, command)
         if not markdown_paths:
             return _allow()
         result = subprocess.run(
             [sys.executable, "-m", "markdown_gate", "check", *markdown_paths],
-            cwd=Path.cwd(),
+            cwd=cwd,
             text=True,
             capture_output=True,
             check=False,
@@ -49,48 +57,69 @@ def _read_payload() -> dict[str, Any]:
 def _extract_command(payload: dict[str, Any]) -> str:
     tool_input = payload.get("tool_input") or payload.get("input") or {}
     if isinstance(tool_input, dict):
-        return str(tool_input.get("cmd") or tool_input.get("command") or "")
+        return str(
+            tool_input.get("cmd")
+            or tool_input.get("command")
+            or tool_input.get("cmdline")
+            or ""
+        )
     return ""
 
 
-def _publish_scope() -> list[str]:
+def _publish_scope(cwd: Path, command: str) -> list[str]:
     explicit = os.environ.get("MARKDOWN_GATE_PATHS")
     if explicit:
         return [item for item in explicit.split(os.pathsep) if item]
 
+    paths = set(_extract_markdown_paths_from_command(command, cwd))
+
     result = subprocess.run(
         ["git", "diff", "--name-only", "--diff-filter=ACMRT", "HEAD"],
+        cwd=cwd,
         text=True,
         capture_output=True,
         check=False,
     )
-    if result.returncode != 0:
-        return []
-    return sorted(
-        {
+    if result.returncode == 0:
+        paths.update(
             line.strip()
             for line in result.stdout.splitlines()
-            if line.strip().endswith((".md", ".markdown")) and Path(line.strip()).exists()
-        }
+            if _is_existing_markdown(cwd, line.strip())
+        )
+
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        check=False,
     )
+    if untracked.returncode == 0:
+        paths.update(
+            line.strip()
+            for line in untracked.stdout.splitlines()
+            if _is_existing_markdown(cwd, line.strip())
+        )
+
+    return sorted(paths)
+
+
+def _extract_markdown_paths_from_command(command: str, cwd: Path) -> list[str]:
+    matches = re.findall(r"(?<![\w./-])([\w./-]+\.(?:md|markdown))\b", command)
+    return [item for item in matches if _is_existing_markdown(cwd, item)]
+
+
+def _is_existing_markdown(cwd: Path, value: str) -> bool:
+    return value.endswith((".md", ".markdown")) and (cwd / value).exists()
 
 
 def _allow() -> int:
-    print(json.dumps({"decision": "approve"}))
+    print(empty())
     return 0
 
 
 def _deny(reason: str, output: str) -> int:
-    print(
-        json.dumps(
-            {
-                "decision": "block",
-                "reason": reason,
-                "feedback": output[-4000:],
-            },
-            ensure_ascii=False,
-        )
-    )
+    print(pre_tool_deny(reason, output))
     return 0
 
 

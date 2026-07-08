@@ -6,6 +6,7 @@ import sys
 
 from .classifier import classify_document
 from .config import GateConfig, load_config
+from .install import install_codex_hooks
 from .model import Document, ScanResult, Severity
 from .report import render_json, render_text
 from .scanner import scan_documents
@@ -21,6 +22,8 @@ def main(argv: list[str] | None = None) -> int:
             return run_check(args)
         if args.command == "classify":
             return run_classify(args)
+        if args.command == "install-codex-hooks":
+            return run_install_codex_hooks(args)
     except Exception as exc:  # noqa: BLE001 - CLI should return clean failures.
         print(f"markdown-gate: {exc}", file=sys.stderr)
         return 2
@@ -66,6 +69,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="output format",
     )
 
+    install = subparsers.add_parser(
+        "install-codex-hooks",
+        help="write project-level .codex/hooks.json for this repository",
+    )
+    install.add_argument("--repo-root", default=".", help="repository root")
+    install.add_argument("--force", action="store_true", help="replace an existing file")
+
     return parser
 
 
@@ -110,6 +120,12 @@ def run_classify(args: argparse.Namespace) -> int:
     else:
         for document in documents:
             print(f"{document.path}\t{document.doc_type}")
+    return 0
+
+
+def run_install_codex_hooks(args: argparse.Namespace) -> int:
+    target = install_codex_hooks(Path(args.repo_root).resolve(), force=args.force)
+    print(f"installed Codex hooks: {target}")
     return 0
 
 

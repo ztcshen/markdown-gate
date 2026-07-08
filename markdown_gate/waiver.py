@@ -77,9 +77,11 @@ def _scope_matches(finding: Finding, scope: dict[str, Any]) -> bool:
 
     section = scope.get("section")
     if section:
-        if not finding.section:
+        sections = finding.sections or ((finding.section,) if finding.section else ())
+        if not sections:
             return False
-        if normalize_section(str(section)) != normalize_section(finding.section):
+        expected = normalize_section(str(section))
+        if all(normalize_section(item) != expected for item in sections):
             return False
 
     return True

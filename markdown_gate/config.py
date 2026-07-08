@@ -23,6 +23,8 @@ DOC_TYPES = {
 DEFAULT_PATH_TYPES = {
     "docs/api/**": "public-api-doc",
     "docs/public/**": "public-api-doc",
+    "docs/reference/**": "public-api-doc",
+    "docs/interfaces/**": "public-api-doc",
     "api/**/*.md": "public-api-doc",
     "docs/access/**": "access-guide",
     "docs/guides/access/**": "access-guide",
@@ -68,27 +70,27 @@ DEFAULT_SEVERITIES = {
         "rejected_prior_solution": "error",
         "self_correction": "error",
         "internal_authoring_process": "error",
-        "negative_constraint": "warning",
+        "negative_constraint": "suggestion",
     },
     "access-guide": {
         "revision_trace": "error",
         "rejected_prior_solution": "error",
         "self_correction": "error",
         "internal_authoring_process": "error",
-        "negative_constraint": "warning",
+        "negative_constraint": "suggestion",
     },
     "implementation-plan": {
-        "revision_trace": "warning",
-        "rejected_prior_solution": "warning",
-        "self_correction": "warning",
-        "internal_authoring_process": "warning",
+        "revision_trace": "error",
+        "rejected_prior_solution": "error",
+        "self_correction": "error",
+        "internal_authoring_process": "error",
         "negative_constraint": "suggestion",
     },
     "issue-description": {
-        "revision_trace": "warning",
-        "rejected_prior_solution": "warning",
-        "self_correction": "warning",
-        "internal_authoring_process": "warning",
+        "revision_trace": "error",
+        "rejected_prior_solution": "error",
+        "self_correction": "error",
+        "internal_authoring_process": "error",
         "negative_constraint": "suggestion",
     },
     "adr": {
@@ -145,10 +147,17 @@ class GateConfig:
         normalized = normalize_section(section)
         return normalized in self.allowed_sections.get(doc_type, set())
 
+    def is_allowed_section_path(self, doc_type: str, sections: list[str]) -> bool:
+        allowed = self.allowed_sections.get(doc_type, set())
+        return any(normalize_section(section) in allowed for section in sections)
+
     def classify_path(self, path: str) -> str | None:
-        normalized = path.replace("\\", "/")
+        normalized = path.replace("\\", "/").lstrip("./")
         for pattern, doc_type in self.path_types.items():
-            if fnmatch.fnmatch(normalized, pattern):
+            normalized_pattern = pattern.replace("\\", "/").lstrip("./")
+            if fnmatch.fnmatch(normalized, normalized_pattern):
+                return doc_type
+            if fnmatch.fnmatch(normalized, f"**/{normalized_pattern}"):
                 return doc_type
         return None
 

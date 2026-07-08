@@ -64,6 +64,7 @@ class Finding:
     message: str
     excerpt: str
     section: str | None = None
+    sections: tuple[str, ...] = ()
     waived_by: str | None = None
 
     @property
@@ -81,6 +82,7 @@ class Finding:
             "message": self.message,
             "excerpt": self.excerpt,
             "section": self.section,
+            "sections": list(self.sections),
             "waived_by": self.waived_by,
         }
 

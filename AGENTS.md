@@ -24,7 +24,8 @@ Run before committing:
 python3 -m unittest discover -s tests -v
 python3 -m markdown_gate check tests/fixtures/api_clean.md tests/fixtures/adr_allowed.md
 python3 -m markdown_gate check tests/fixtures/api_dirty.md
+python3 -m markdown_gate install-codex-hooks --force
 ```
 
-The final command is expected to fail; use it to confirm the gate catches a
-dirty public API fixture.
+The dirty fixture check is expected to fail; use it to confirm the gate catches
+a dirty public API fixture.

@@ -34,7 +34,15 @@ Supported types in the MVP:
 - `runbook`
 - `unknown`
 
-The classifier uses frontmatter first, then path and heading heuristics.
+The classifier uses this order:
+
+1. explicit `--type`
+2. path policy
+3. frontmatter
+4. heading heuristics
+
+Path policy is intentionally ahead of frontmatter so a public docs path such as
+`docs/api/**` cannot be downgraded to `adr` by stale metadata.
 
 ```markdown
 ---
@@ -79,5 +87,20 @@ Hook scripts under `hooks/codex/` are intentionally thin wrappers around the
 CLI. They read hook JSON from stdin, inspect changed Markdown files or publish
 commands, and return JSON that Codex can use as feedback.
 
-This repository does not install hooks automatically yet. Keep hook rollout
-explicit until the rule set is stable.
+Hook coverage in this repository:
+
+- `PreToolUse` blocks publish-like Bash commands when changed Markdown fails.
+- `PostToolUse` checks Markdown touched by `apply_patch`, `Edit`, `Write`, and
+  likely Markdown-changing Bash commands.
+- `Stop` checks Markdown final answers, including fenced Markdown and content
+  beginning at the first Markdown heading, while respecting Codex's active stop
+  retry flag.
+
+Install project-level hooks with:
+
+```bash
+python3 -m markdown_gate install-codex-hooks --force
+```
+
+This writes `.codex/hooks.json` in the current repository. Codex will still ask
+you to trust non-managed command hooks before running them.

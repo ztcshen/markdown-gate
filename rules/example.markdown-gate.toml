@@ -19,7 +19,21 @@ revision_trace = "error"
 rejected_prior_solution = "error"
 self_correction = "error"
 internal_authoring_process = "error"
-negative_constraint = "warning"
+negative_constraint = "suggestion"
+
+[severity.implementation-plan]
+revision_trace = "error"
+rejected_prior_solution = "error"
+self_correction = "error"
+internal_authoring_process = "error"
+negative_constraint = "suggestion"
+
+[severity.issue-description]
+revision_trace = "error"
+rejected_prior_solution = "error"
+self_correction = "error"
+internal_authoring_process = "error"
+negative_constraint = "suggestion"
 
 [severity.adr]
 revision_trace = "suggestion"

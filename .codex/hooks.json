@@ -32,7 +32,7 @@
           {
             "type": "command",
             "command": "python3 \"$(git rev-parse --show-toplevel)/hooks/codex/stop.py\"",
-            "timeout": 10,
+            "timeout": 15,
             "statusMessage": "Checking Markdown delivery"
           }
         ]

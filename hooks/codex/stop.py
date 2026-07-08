@@ -2,7 +2,16 @@
 from __future__ import annotations
 
 import json
+import re
+import subprocess
 import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from markdown_gate.hook_output import empty, stop_block
 
 
 def main() -> int:
@@ -10,22 +19,55 @@ def main() -> int:
     # agent when the transcript suggests Markdown delivery, but it does not
     # parse full conversation state yet.
     payload = _read_payload()
+    if payload.get("stop_hook_active"):
+        print(empty())
+        return 0
+
+    cwd = Path(str(payload.get("cwd") or Path.cwd()))
     last_message = str(payload.get("last_assistant_message") or payload.get("message") or "")
-    if "```markdown" in last_message or last_message.strip().startswith("#"):
-        print(
-            json.dumps(
-                {
-                    "feedback": (
-                        "Before final delivery, run `python3 -m markdown_gate check` "
-                        "on any Markdown artifact or pipe the Markdown through "
-                        "`--stdin --type <doc-type>`."
-                    )
-                }
-            )
+    markdown = _extract_markdown(last_message)
+    if markdown:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "markdown_gate",
+                "check",
+                "--stdin",
+                "--type",
+                str(payload.get("markdown_gate_doc_type") or "unknown"),
+            ],
+            input=markdown,
+            cwd=cwd,
+            text=True,
+            capture_output=True,
+            check=False,
         )
+        if result.returncode != 0:
+            print(
+                stop_block(
+                    "markdown-gate blocked final Markdown delivery. "
+                    "Revise the Markdown and rerun the check.",
+                    result.stdout,
+                )
+            )
+        else:
+            print(empty())
     else:
-        print(json.dumps({}))
+        print(empty())
     return 0
+
+
+def _extract_markdown(message: str) -> str:
+    fenced = re.findall(r"```(?:markdown|md)\s*\n(.*?)```", message, flags=re.I | re.S)
+    if fenced:
+        return "\n\n".join(part.strip() for part in fenced if part.strip())
+
+    lines = message.splitlines()
+    for index, line in enumerate(lines):
+        if re.match(r"^\s*#\s+", line):
+            return "\n".join(lines[index:]).strip()
+    return ""
 
 
 def _read_payload() -> dict[str, object]:
