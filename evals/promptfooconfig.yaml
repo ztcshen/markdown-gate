@@ -1,0 +1,20 @@
+description: markdown-gate final-state hygiene rubric
+
+prompts:
+  - "{{document}}"
+
+providers:
+  - openai:gpt-5-mini
+
+tests:
+  - description: public API docs should read as final-state contract
+    vars:
+      doc_type: public-api-doc
+      document: |
+        # Withdraw Apply API
+
+        The request uses `apply_no` and `amount`.
+    assert:
+      - type: llm-rubric
+        threshold: 0.9
+        value: file://rubrics/final-state.md

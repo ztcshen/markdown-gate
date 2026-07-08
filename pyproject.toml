@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "markdown-gate"
+version = "0.1.0"
+description = "Markdown final-state hygiene gate for AI-authored docs"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "zlh" }]
+dependencies = []
+
+[project.scripts]
+markdown-gate = "markdown_gate.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["markdown_gate*"]

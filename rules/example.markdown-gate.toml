@@ -1,0 +1,29 @@
+[defaults]
+fail_on = "error"
+
+[path_types]
+"docs/api/**" = "public-api-doc"
+"docs/access/**" = "access-guide"
+"docs/plans/**" = "implementation-plan"
+"docs/issues/**" = "issue-description"
+"docs/adr/**" = "adr"
+"docs/runbooks/**" = "runbook"
+
+[allowed_sections]
+implementation-plan = ["Alternatives Considered", "Decision Record"]
+adr = ["Context", "Decision", "Alternatives", "Consequences"]
+runbook = ["Warnings", "Safety", "Rollback", "Constraints"]
+
+[severity.public-api-doc]
+revision_trace = "error"
+rejected_prior_solution = "error"
+self_correction = "error"
+internal_authoring_process = "error"
+negative_constraint = "warning"
+
+[severity.adr]
+revision_trace = "suggestion"
+rejected_prior_solution = "suggestion"
+self_correction = "warning"
+internal_authoring_process = "warning"
+negative_constraint = "off"
