@@ -1,19 +1,21 @@
 # markdown-gate
 
-`markdown-gate` checks Markdown drafts before they become published docs,
-issue descriptions, access guides, or plans. It focuses on one AI-writing
-failure mode: process residue leaking into final copy.
+`markdown-gate` is a TypeScript CLI and Codex hook runtime for gating AI-written
+Markdown before it becomes published documentation, issue text, access guides,
+or implementation plans.
 
-It is not a generic forbidden-words linter. Phrases such as "not", "do not",
-or "previous design" can be valid in ADRs and runbooks. The gate combines
-document type policy, suspicious-signal scanning, and scoped waivers.
+The project uses [promptfoo](https://github.com/promptfoo/promptfoo) as its eval
+harness. The local gate stays deterministic and fast; promptfoo supplies the
+regression suite, CI surface, and optional LLM judge layer.
 
 ## Quick Start
 
 ```bash
-python3 -m markdown_gate check docs/api/withdraw.md
-python3 -m markdown_gate check --type issue-description --stdin < issue.md
-python3 -m markdown_gate check --format json docs
+npm install
+npm run build
+node dist/cli.js check docs/api/withdraw.md
+node dist/cli.js check --type issue-description --stdin < issue.md
+node dist/cli.js check --format json docs
 ```
 
 Exit codes:
@@ -24,7 +26,7 @@ Exit codes:
 
 ## Document Types
 
-Supported types in the MVP:
+Supported document types:
 
 - `public-api-doc`
 - `access-guide`
@@ -41,8 +43,8 @@ The classifier uses this order:
 3. frontmatter
 4. heading heuristics
 
-Path policy is intentionally ahead of frontmatter so a public docs path such as
-`docs/api/**` cannot be downgraded to `adr` by stale metadata.
+Path policy is ahead of frontmatter, so a public docs path such as `docs/api/**`
+keeps its public API policy even when stale metadata exists.
 
 ```markdown
 ---
@@ -52,9 +54,28 @@ doc_type: public-api-doc
 # Withdraw Apply API
 ```
 
+## Promptfoo Evals
+
+Run the deterministic regression suite:
+
+```bash
+npm run build
+npm run eval
+```
+
+The promptfoo provider in `evals/providers/markdown-gate-provider.cjs` calls the
+built CLI and returns the JSON gate report. This keeps local hook checks fast
+while still making Markdown quality measurable in CI.
+
+Run the optional LLM judge suite when model credentials are available:
+
+```bash
+OPENAI_API_KEY=... npm run eval:llm
+```
+
 ## Waivers
 
-Waivers live outside the document body.
+Waivers live outside the Markdown body.
 
 ```json
 {
@@ -77,39 +98,36 @@ Waivers live outside the document body.
 Run with:
 
 ```bash
-python3 -m markdown_gate check docs/plans/scf-rollout.md \
+node dist/cli.js check docs/plans/scf-rollout.md \
   --waiver-file .markdown-gate-waivers.json
 ```
 
 ## Codex Hooks
 
-Hook scripts under `hooks/codex/` are intentionally thin wrappers around the
-CLI. They read hook JSON from stdin, inspect changed Markdown files or publish
-commands, and return JSON that Codex can use as feedback.
+Install project-level hooks:
 
-Hook coverage in this repository:
+```bash
+npm run build
+node dist/cli.js install-codex-hooks --force
+```
 
-- `PreToolUse` blocks publish-like Bash commands when changed Markdown fails.
-- `PostToolUse` checks Markdown touched by `apply_patch`, `Edit`, `Write`, and
-  likely Markdown-changing Bash commands.
+Install global hooks:
+
+```bash
+npm run build
+node dist/cli.js install-codex-hooks --global --force --repo-root "$(pwd)"
+```
+
+Hook coverage:
+
+- `PreToolUse` blocks publish-like shell commands when changed Markdown fails.
+- `PostToolUse` checks Markdown touched by shell commands, patch tools, edit
+  tools, and write tools.
 - `Stop` checks Markdown final answers, including fenced Markdown and content
-  beginning at the first Markdown heading, while respecting Codex's active stop
-  retry flag.
+  beginning at the first Markdown heading.
 
-Install project-level hooks with:
+## Compatibility Contract
 
-```bash
-python3 -m markdown_gate install-codex-hooks --force
-```
-
-This writes `.codex/hooks.json` in the current repository. Codex will still ask
-you to trust non-managed command hooks before running them.
-
-Install globally with:
-
-```bash
-python3 -m markdown_gate install-codex-hooks --global --force
-```
-
-Global hooks are written to `~/.codex/hooks.json` and use absolute paths to this
-repository's hook scripts, so they can run from other Codex workspaces.
+The public contract is the CLI, exit codes, JSON report format, config shape,
+document type names, and rule IDs. The scanner implementation can evolve behind
+that contract.

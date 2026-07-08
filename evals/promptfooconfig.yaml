@@ -1,10 +1,10 @@
-description: markdown-gate final-state hygiene rubric
+description: markdown-gate deterministic regression suite
 
 prompts:
   - "{{document}}"
 
 providers:
-  - openai:gpt-5-mini
+  - file://providers/markdown-gate-provider.cjs
 
 tests:
   - description: public API docs should read as final-state contract
@@ -15,6 +15,38 @@ tests:
 
         The request uses `apply_no` and `amount`.
     assert:
-      - type: llm-rubric
-        threshold: 0.9
-        value: file://rubrics/final-state.md
+      - type: javascript
+        value: |
+          const result = JSON.parse(output);
+          return result.status === 'pass';
+
+  - description: public API docs should reject revision residue
+    vars:
+      doc_type: public-api-doc
+      expect_status: fail
+      document: |
+        # Withdraw Apply API
+
+        The previous design used `old_field`, but it has been removed.
+    assert:
+      - type: javascript
+        value: |
+          const result = JSON.parse(output);
+          return result.status === 'fail' &&
+            result.findings.some((finding) => finding.rule === 'rejected_prior_solution');
+
+  - description: ADR alternatives may keep decision history
+    vars:
+      doc_type: adr
+      expect_status: pass
+      document: |
+        # ADR: Withdraw Apply Contract
+
+        ## Alternatives
+
+        The previous approach used `old_field`.
+    assert:
+      - type: javascript
+        value: |
+          const result = JSON.parse(output);
+          return result.status === 'pass';

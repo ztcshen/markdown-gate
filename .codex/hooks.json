@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel)/hooks/codex/pre_tool_use.py\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/dist/cli.js\" hook pre-tool-use",
             "timeout": 30,
             "statusMessage": "Checking Markdown publish gate"
           }
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel)/hooks/codex/post_tool_use.py\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/dist/cli.js\" hook post-tool-use",
             "timeout": 60,
             "statusMessage": "Checking Markdown final-state hygiene"
           }
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel)/hooks/codex/stop.py\"",
+            "command": "node \"$(git rev-parse --show-toplevel)/dist/cli.js\" hook stop",
             "timeout": 15,
             "statusMessage": "Checking Markdown delivery"
           }

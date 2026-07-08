@@ -1,0 +1,54 @@
+{
+  "name": "markdown-gate",
+  "version": "0.1.0",
+  "description": "Promptfoo-backed Markdown final-state hygiene gate for AI-authored docs",
+  "type": "module",
+  "license": "MIT",
+  "author": "zlh",
+  "keywords": [
+    "markdown",
+    "promptfoo",
+    "codex",
+    "hooks",
+    "llm-evals",
+    "documentation"
+  ],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "bin": {
+    "markdown-gate": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "evals",
+    "rules",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": "^20.20.0 || >=22.22.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "eval": "promptfoo eval -c evals/promptfooconfig.yaml",
+    "eval:llm": "promptfoo eval -c evals/promptfooconfig.llm.yaml",
+    "format": "biome format --write .",
+    "lint": "biome check .",
+    "prepack": "npm run build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "smol-toml": "^1.7.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.2",
+    "@types/node": "^26.1.0",
+    "promptfoo": "^0.121.17",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  }
+}
