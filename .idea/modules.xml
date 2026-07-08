@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/markdown-gate.iml" filepath="$PROJECT_DIR$/.idea/markdown-gate.iml" />
+      <module fileurl="file://$PROJECT_DIR$/markdown-gate.iml" filepath="$PROJECT_DIR$/markdown-gate.iml" />
     </modules>
   </component>
 </project>
