@@ -1,6 +1,7 @@
 {
   "name": "markdown-gate",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "packageManager": "pnpm@11.25.0",
   "description": "Promptfoo-backed Markdown final-state hygiene gate for AI-authored docs",
   "type": "module",
   "license": "MIT",
@@ -42,7 +43,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "audit:high": "npm audit --audit-level=high",
+    "audit:high": "pnpm audit --audit-level=high",
     "check": "npm run typecheck && npm run lint && npm test",
     "eval": "promptfoo eval -c evals/promptfooconfig.yaml",
     "eval:llm": "promptfoo eval -c evals/promptfooconfig.llm.yaml",
@@ -60,7 +61,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.2",
     "@types/node": "^26.1.0",
-    "promptfoo": "^0.121.17",
+    "promptfoo": "0.124.1",
     "tsx": "^4.23.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"

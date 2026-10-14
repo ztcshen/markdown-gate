@@ -103,6 +103,7 @@ patterns = [
   "为避免.*再次",
   "按你的反馈",
   "根据反馈",
+  "不应混用",
   "as requested",
   "based on feedback",
   "to avoid confusion",

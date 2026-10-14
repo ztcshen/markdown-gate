@@ -11,7 +11,7 @@ regression suite, CI surface, and optional LLM judge layer.
 ## Quick Start
 
 ```bash
-npm install
+corepack pnpm install --frozen-lockfile
 npm run build
 node dist/cli.js check docs/api/withdraw.md
 node dist/cli.js check --type issue-description --stdin < issue.md
@@ -56,6 +56,12 @@ doc_type: public-api-doc
 ```
 
 ## Promptfoo Evals
+
+Development uses the pinned pnpm version and Node.js 22.22 or newer. The dependency
+policy excludes Promptfoo's optional Java-keystore provider (`jks-js`) because its
+cryptography dependency has an unpatched advisory. Local deterministic providers
+and the configured OpenAI judge remain available. FTP parsing uses a patched
+dependency version; the full remaining development and runtime tree is audited.
 
 Run the deterministic regression suite:
 
@@ -142,7 +148,7 @@ node dist/cli.js install-codex-hooks --global --force --repo-root "$(pwd)"
 
 Hook coverage:
 
-- `PreToolUse` blocks publish-like shell commands when changed Markdown fails.
+- `PreToolUse` blocks publish-like shell commands and Multica description/content writes when Markdown fails.
 - `PostToolUse` checks Markdown touched by shell commands, patch tools, edit
   tools, and write tools.
 - `Stop` checks Markdown final answers, including fenced Markdown and content

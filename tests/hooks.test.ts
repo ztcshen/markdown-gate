@@ -31,6 +31,36 @@ describe("Codex hooks", () => {
     }
   });
 
+  it("blocks inline Multica descriptions before the remote write", () => {
+    const output = runPreToolUse(
+      JSON.stringify({
+        cwd: process.cwd(),
+        tool_name: "Bash",
+        tool_input: {
+          command:
+            'multica issue create --title "Example names" --description "不应混用：示例一、示例二"',
+        },
+      }),
+    );
+
+    expect(JSON.parse(output).decision).toBe("block");
+  });
+
+  it("blocks Multica API helper content files before the remote write", () => {
+    const output = runPreToolUse(
+      JSON.stringify({
+        cwd: process.cwd(),
+        tool_name: "Bash",
+        tool_input: {
+          command:
+            "python3 /opt/tools/multica_api.py --profile example comment ISSUE-1 --content-file tests/fixtures/api_dirty.md",
+        },
+      }),
+    );
+
+    expect(JSON.parse(output).decision).toBe("block");
+  });
+
   it("blocks dirty Markdown from an apply_patch payload", () => {
     const output = runPostToolUse(
       JSON.stringify({

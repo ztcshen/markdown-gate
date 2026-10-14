@@ -6,6 +6,10 @@ This repository builds a Markdown publication gate for AI-authored docs. The
 canonical implementation is TypeScript/Node. Promptfoo is the eval harness for
 regression suites and optional LLM judging.
 
+Use the pinned pnpm version and `pnpm install --frozen-lockfile` for dependencies.
+Keep the dependency policy in `pnpm-workspace.yaml`; Java-keystore evaluation is
+outside this project's supported providers. npm script entrypoints remain valid.
+
 ## Design Rules
 
 - Treat Markdown as the only first-class input format.

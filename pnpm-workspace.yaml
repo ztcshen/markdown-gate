@@ -1,0 +1,10 @@
+overrides:
+  'promptfoo>jks-js': '-'
+  basic-ftp: 6.2.3
+
+allowBuilds:
+  esbuild: true
+  libsql: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true

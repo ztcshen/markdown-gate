@@ -57,7 +57,7 @@ function hooksJson(preCommand: string, postCommand: string, stopCommand: string)
     hooks: {
       PreToolUse: [
         {
-          matcher: "^Bash$",
+          matcher: "*",
           hooks: [
             {
               type: "command",
@@ -70,7 +70,7 @@ function hooksJson(preCommand: string, postCommand: string, stopCommand: string)
       ],
       PostToolUse: [
         {
-          matcher: "^Bash$|^apply_patch$|^Edit$|^Write$",
+          matcher: "*",
           hooks: [
             {
               type: "command",

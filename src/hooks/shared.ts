@@ -1,11 +1,16 @@
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { delimiter, isAbsolute, resolve } from "node:path";
-import { checkPaths, isMarkdownPath } from "../gate.js";
+import { checkPaths, checkText, isMarkdownPath } from "../gate.js";
 import type { ScanResult } from "../model.js";
 import { renderText } from "../report.js";
 
 export type HookPayload = Record<string, unknown>;
+
+export type MarkdownTextInput = {
+  source: string;
+  text: string;
+};
 
 export function readPayload(raw: string): HookPayload {
   if (!raw.trim()) {
@@ -35,6 +40,15 @@ export function checkMarkdownPaths(
   cwd = process.cwd(),
 ): { result: ScanResult; output: string } {
   const result = checkPaths(paths.map((item) => (isAbsolute(item) ? item : resolve(cwd, item))));
+  return { result, output: renderText(result) };
+}
+
+export function checkMarkdownText(
+  source: string,
+  text: string,
+  explicitType: string,
+): { result: ScanResult; output: string } {
+  const result = checkText(source, text, { explicitType });
   return { result, output: renderText(result) };
 }
 
@@ -100,6 +114,32 @@ export function extractMarkdownPaths(payload: HookPayload, cwd: string): string[
   return [...new Set(candidates.filter((item) => isExistingMarkdown(cwd, item)))].sort();
 }
 
+export function extractMulticaTextInputs(cwd: string, command: string): MarkdownTextInput[] {
+  if (!isMulticaTextWriteCommand(command)) {
+    return [];
+  }
+
+  const inputs: MarkdownTextInput[] = [];
+  for (const option of ["description", "content"]) {
+    for (const text of optionValues(command, option)) {
+      inputs.push({ source: `${cwd}/<multica-${option}>.md`, text });
+    }
+  }
+
+  for (const option of ["description-file", "content-file"]) {
+    for (const path of optionValues(command, option)) {
+      const source = isAbsolute(path) ? path : resolve(cwd, path);
+      try {
+        inputs.push({ source, text: readFileSync(source, "utf8") });
+      } catch {
+        // Let the target CLI report unreadable files with its native error.
+      }
+    }
+  }
+
+  return inputs;
+}
+
 export function isBashPayload(payload: HookPayload): boolean {
   return String(payload.tool_name || "").toLowerCase() === "bash";
 }
@@ -142,6 +182,30 @@ function isExistingMarkdown(cwd: string, value: string): boolean {
 
 function extractMarkdownPathsFromText(text: string): string[] {
   return [...text.matchAll(/(?<![\w./-])([\w./-]+\.(?:md|markdown))\b/gi)].map((match) => match[1]);
+}
+
+function isMulticaTextWriteCommand(command: string): boolean {
+  const isMulticaCli = /\bmultica(?:\s|$)/i.test(command);
+  const isMulticaHelper = /\bmultica_api\.py\b/i.test(command);
+  const hasTextOption = ["description", "description-file", "content", "content-file"].some(
+    (option) => new RegExp(`(?:^|\\s)--${option}(?:=|\\s|$)`).test(command),
+  );
+  return (isMulticaCli || isMulticaHelper) && hasTextOption;
+}
+
+function optionValues(command: string, option: string): string[] {
+  const matcher = new RegExp(
+    `(?:^|\\s)--${option}(?:=|\\s+)(?:"((?:\\\\.|[^"])*)"|'((?:\\\\.|[^'])*)'|([^\\s]+))`,
+    "g",
+  );
+  const values: string[] = [];
+  for (const match of command.matchAll(matcher)) {
+    const value = match[1] ?? match[2] ?? match[3];
+    if (value) {
+      values.push(value.replace(/\\([\\"'])/g, "$1"));
+    }
+  }
+  return values;
 }
 
 function extractPathsFromPatch(text: string): string[] {
