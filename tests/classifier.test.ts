@@ -3,6 +3,17 @@ import { classifyDocument } from "../src/classifier.js";
 import { createDefaultConfig } from "../src/config.js";
 
 describe("classifier", () => {
+  it("uses rendered setext headings for classification", () => {
+    expect(
+      classifyDocument("example.md", "Example API\n===========", createDefaultConfig()).docType,
+    ).toBe("public-api-doc");
+  });
+
+  it("ignores headings inside code examples and quoted documents", () => {
+    expect(
+      classifyDocument("example.md", "```md\n# API\n```\n\n> # API", createDefaultConfig()).docType,
+    ).toBe("unknown");
+  });
   it("uses explicit type first", () => {
     const result = classifyDocument("docs/api/test.md", "# ADR\n", createDefaultConfig(), "adr");
     expect(result.docType).toBe("adr");

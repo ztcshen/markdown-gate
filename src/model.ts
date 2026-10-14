@@ -26,6 +26,8 @@ export interface Document {
   text: string;
   docType: DocumentType;
   metadata: Metadata;
+  /** Source lines removed before scanning, such as a frontmatter header. */
+  lineOffset?: number;
 }
 
 export interface Finding {

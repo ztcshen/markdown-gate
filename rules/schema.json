@@ -16,7 +16,8 @@
           "pattern": "^[a-z][a-z0-9_-]*$"
         },
         "version": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "description": {
           "type": "string"
@@ -53,9 +54,7 @@
           "severity": {
             "type": "object",
             "required": ["default"],
-            "additionalProperties": {
-              "enum": ["off", "suggestion", "warning", "error"]
-            },
+            "additionalProperties": false,
             "properties": {
               "default": {
                 "enum": ["off", "suggestion", "warning", "error"]

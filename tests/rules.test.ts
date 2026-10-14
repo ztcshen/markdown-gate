@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   builtinRulePackPath,
@@ -10,6 +12,24 @@ import {
 } from "../src/rules.js";
 
 describe("rule packs", () => {
+  it.each([
+    [
+      "allow_in_allowed_sections = true",
+      'allow_in_allowed_sections = "false"',
+      "must be a boolean",
+    ],
+    ["allow_in_allowed_sections = true", "allow_in_allowed_section = true", "unknown key"],
+    ['default = "warning"', "default = false", "non-empty string"],
+  ])("rejects malformed rule policy", (before, after, error) => {
+    const root = mkdtempSync(join(tmpdir(), "markdown-gate-rules-"));
+    try {
+      const path = join(root, "rules.toml");
+      writeFileSync(path, readFileSync(builtinRulePackPath(), "utf8").replace(before, after));
+      expect(() => loadRulePack(path)).toThrow(error);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
   it("loads and validates the built-in final-state residue rule pack", () => {
     const rulePack = loadRulePack(builtinRulePackPath());
 

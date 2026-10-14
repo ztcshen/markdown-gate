@@ -13,8 +13,13 @@ export function globToRegExp(pattern: string): RegExp {
     const char = normalized[index];
     const next = normalized[index + 1];
     if (char === "*" && next === "*") {
-      source += ".*";
-      index += 1;
+      if (normalized[index + 2] === "/") {
+        source += "(?:.*/)?";
+        index += 2;
+      } else {
+        source += ".*";
+        index += 1;
+      }
     } else if (char === "*") {
       source += "[^/]*";
     } else if (char === "?") {

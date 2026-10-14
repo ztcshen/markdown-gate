@@ -1,4 +1,4 @@
-description: markdown-gate deterministic regression suite
+description: markdown-gate deterministic publication regression suite
 
 prompts:
   - "{{document}}"
@@ -6,47 +6,214 @@ prompts:
 providers:
   - file://providers/markdown-gate-provider.cjs
 
+defaultTest:
+  assert:
+    - type: javascript
+      value: |
+        const result = JSON.parse(output);
+        const expected = context.vars;
+        return result.status === expected.expect_status &&
+          (expected.expect_count === undefined || result.findings.length === expected.expect_count) &&
+          (!expected.expect_rule || result.findings.some((finding) =>
+            finding.rule === expected.expect_rule &&
+            (!expected.expect_line || finding.line === expected.expect_line)));
+
 tests:
-  - description: public API docs should read as final-state contract
+  - description: public API final-state contract
     vars:
       doc_type: public-api-doc
+      expect_status: pass
+      expect_count: 0
       document: |
-        # Withdraw Apply API
+        # Request API
 
-        The request uses `apply_no` and `amount`.
-    assert:
-      - type: javascript
-        value: |
-          const result = JSON.parse(output);
-          return result.status === 'pass';
+        The request uses `request_id` and `amount`.
 
-  - description: public API docs should reject revision residue
+  - description: public API revision residue
     vars:
       doc_type: public-api-doc
       expect_status: fail
+      expect_rule: rejected_prior_solution
       document: |
-        # Withdraw Apply API
+        # Request API
 
         The previous design used `old_field`, but it has been removed.
-    assert:
-      - type: javascript
-        value: |
-          const result = JSON.parse(output);
-          return result.status === 'fail' &&
-            result.findings.some((finding) => finding.rule === 'rejected_prior_solution');
 
-  - description: ADR alternatives may keep decision history
+  - description: ADR alternatives preserve decision history
     vars:
       doc_type: adr
       expect_status: pass
+      expect_count: 0
       document: |
-        # ADR: Withdraw Apply Contract
+        # ADR: Request Contract
 
         ## Alternatives
 
         The previous approach used `old_field`.
-    assert:
-      - type: javascript
-        value: |
-          const result = JSON.parse(output);
-          return result.status === 'pass';
+
+  - description: headings are reader-facing prose
+    vars:
+      doc_type: public-api-doc
+      expect_status: fail
+      expect_rule: rejected_prior_solution
+      expect_line: 1
+      document: |
+        # Previous design
+
+  - description: table prose cannot bypass publication checks
+    vars:
+      doc_type: public-api-doc
+      expect_status: fail
+      expect_rule: rejected_prior_solution
+      expect_line: 3
+      document: |
+        | Field | Description |
+        | --- | --- |
+        | request_id | The previous design used another field. |
+
+  - description: inline literals are code examples
+    vars:
+      doc_type: public-api-doc
+      expect_status: pass
+      expect_count: 0
+      document: |
+        # Search API
+
+        Use `previous design` as a literal search string.
+
+  - description: nested code fences keep their boundary
+    vars:
+      doc_type: public-api-doc
+      expect_status: pass
+      expect_count: 0
+      document: |
+        # Examples API
+
+        ````markdown
+        ```text
+        The previous design used a field.
+        ```
+        ````
+
+  - description: emphasis preserves prose across markup
+    vars:
+      doc_type: public-api-doc
+      expect_status: fail
+      expect_rule: rejected_prior_solution
+      document: |
+        The **previous** *design* used another field.
+
+  - description: entities do not hide authoring residue
+    vars:
+      doc_type: public-api-doc
+      expect_status: fail
+      expect_rule: rejected_prior_solution
+      document: |
+        The prev&#105;ous design used another field.
+
+  - description: frontmatter retains source line numbers
+    vars:
+      doc_type: public-api-doc
+      expect_status: fail
+      expect_rule: rejected_prior_solution
+      expect_line: 7
+      document: |
+        ---
+        doc_type: public-api-doc
+        ---
+
+        # Request API
+
+        The previous design used another field.
+
+  - description: Chinese issue text rejects internal authoring instructions
+    vars:
+      doc_type: issue-description
+      expect_status: fail
+      expect_rule: internal_authoring_process
+      document: |
+        # 接口需求
+
+        按你的反馈，接口返回 request_id。
+
+  - description: access guides reject authoring feedback
+    vars:
+      doc_type: access-guide
+      expect_status: fail
+      expect_rule: internal_authoring_process
+      document: |
+        # Access Guide
+
+        As requested, this guide explains authentication.
+
+  - description: implementation plans allow nested alternatives
+    vars:
+      doc_type: implementation-plan
+      expect_status: pass
+      expect_count: 0
+      document: |
+        # Implementation Plan
+
+        ## Alternatives Considered
+
+        ### Storage
+
+        The previous approach used another field.
+
+  - description: sibling plan sections end the alternatives allowance
+    vars:
+      doc_type: implementation-plan
+      expect_status: fail
+      expect_rule: rejected_prior_solution
+      expect_line: 9
+      document: |
+        # Implementation Plan
+
+        ## Alternatives Considered
+
+        The previous approach used another field.
+
+        ## Contract
+
+        The previous design used another field.
+
+  - description: operational rollback sections preserve relevant history
+    vars:
+      doc_type: runbook
+      expect_status: pass
+      expect_count: 0
+      document: |
+        # Runbook
+
+        ## Rollback
+
+        The previous version remains available. Do not delete it during rollback.
+
+  - description: unknown documents retain warning severity
+    vars:
+      doc_type: unknown
+      expect_status: pass
+      expect_rule: rejected_prior_solution
+      document: |
+        # Notes
+
+        The previous design used another field.
+
+  - description: multiple residues in one paragraph are all reported
+    vars:
+      doc_type: public-api-doc
+      expect_status: fail
+      expect_rule: rejected_prior_solution
+      expect_count: 2
+      document: |
+        The previous design follows the previous approach.
+
+  - description: normative API constraints are suggestions rather than errors
+    vars:
+      doc_type: public-api-doc
+      expect_status: pass
+      expect_rule: negative_constraint
+      document: |
+        # Authentication API
+
+        Do not share the API key with client-side code.

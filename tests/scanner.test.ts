@@ -56,7 +56,7 @@ describe("scanner", () => {
     expect(findings.some((finding) => finding.severity === "error")).toBe(false);
   });
 
-  it("skips fenced code and table rows", () => {
+  it("skips fenced code while scanning prose in table cells", () => {
     const doc = makeDocument(
       "docs/api/withdraw.md",
       "# Withdraw API\n\n" +
@@ -70,7 +70,8 @@ describe("scanner", () => {
 
     const findings = scanDocument(doc, createDefaultConfig());
 
-    expect(findings).toEqual([]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ rule: "rejected_prior_solution", line: 9 });
   });
 
   it("allows ADR alternatives to mention prior solutions", () => {

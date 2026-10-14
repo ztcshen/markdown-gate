@@ -4,6 +4,12 @@ import { fileURLToPath } from "node:url";
 import { parse as parseToml } from "smol-toml";
 import type { DocumentType, Severity } from "./model.js";
 import { DOC_TYPES, parseSeverity } from "./model.js";
+import {
+  assertKnownKeys,
+  requireRecord,
+  requireString,
+  requireStringArray,
+} from "./policy-validation.js";
 
 export interface RulePack {
   rulePack: {
@@ -82,10 +88,14 @@ export function validateRulePack(rulePack: RulePack): void {
     if (!rule.message.trim()) {
       throw new Error(`rule ${rule.id} must define a message`);
     }
+    if (typeof rule.allowInAllowedSections !== "boolean") {
+      throw new Error(`rule ${rule.id} allow_in_allowed_sections must be a boolean`);
+    }
     if (rule.patterns.length === 0) {
       throw new Error(`rule ${rule.id} must define at least one pattern`);
     }
     for (const pattern of rule.patterns) {
+      requireString(pattern, `rule ${rule.id} pattern`);
       assertCompiles(pattern, rule.id);
     }
     if (!rule.severity.default) {
@@ -95,6 +105,12 @@ export function validateRulePack(rulePack: RulePack): void {
       if (docType !== "default" && !(DOC_TYPES as readonly string[]).includes(docType)) {
         throw new Error(`rule ${rule.id} has severity for unknown doc_type: ${docType}`);
       }
+      parseSeverity(
+        requireString(
+          rule.severity[docType as DocumentType | "default"],
+          `rule ${rule.id} severity.${docType}`,
+        ),
+      );
     }
   }
 }
@@ -115,11 +131,10 @@ export function severityDefaultsFromRules(
 }
 
 function normalizeRulePack(data: Record<string, unknown>, path: string): RulePack {
-  const rulePack = asRecord(data.rule_pack);
+  assertKnownKeys(data, ["rule_pack", "rules"], path);
+  const rulePack = requireRecord(data.rule_pack, `${path}: rule_pack`);
+  assertKnownKeys(rulePack, ["id", "version", "description"], `${path}: rule_pack`);
   const rules = data.rules;
-  if (!rulePack) {
-    throw new Error(`${path}: rule_pack table is required`);
-  }
   if (!Array.isArray(rules)) {
     throw new Error(`${path}: rules must be an array`);
   }
@@ -134,20 +149,25 @@ function normalizeRulePack(data: Record<string, unknown>, path: string): RulePac
 }
 
 function normalizeRule(value: unknown, location: string): RuleDefinition {
-  const rule = asRecord(value);
-  if (!rule) {
-    throw new Error(`${location} must be a table`);
-  }
-  const severity = asRecord(rule.severity);
-  if (!severity) {
-    throw new Error(`${location}.severity table is required`);
+  const rule = requireRecord(value, location);
+  assertKnownKeys(
+    rule,
+    ["id", "message", "patterns", "severity", "allow_in_allowed_sections"],
+    location,
+  );
+  const severity = requireRecord(rule.severity, `${location}.severity`);
+  if (
+    rule.allow_in_allowed_sections !== undefined &&
+    typeof rule.allow_in_allowed_sections !== "boolean"
+  ) {
+    throw new Error(`${location}.allow_in_allowed_sections must be a boolean`);
   }
   return {
     id: requireString(rule.id, `${location}.id`),
     message: requireString(rule.message, `${location}.message`),
     patterns: requireStringArray(rule.patterns, `${location}.patterns`),
     severity: normalizeSeverity(severity, `${location}.severity`),
-    allowInAllowedSections: Boolean(rule.allow_in_allowed_sections),
+    allowInAllowedSections: rule.allow_in_allowed_sections === true,
   };
 }
 
@@ -160,7 +180,9 @@ function normalizeSeverity(
     if (key !== "default" && !(DOC_TYPES as readonly string[]).includes(key)) {
       throw new Error(`${location}.${key} is not a known doc_type`);
     }
-    severity[key as DocumentType | "default"] = parseSeverity(String(rawValue));
+    severity[key as DocumentType | "default"] = parseSeverity(
+      requireString(rawValue, `${location}.${key}`),
+    );
   }
   return severity;
 }
@@ -172,13 +194,6 @@ function severityByDocType(rule: RuleDefinition): Record<DocumentType, Severity>
   ) as Record<DocumentType, Severity>;
 }
 
-function requireString(value: unknown, location: string): string {
-  if (typeof value !== "string" || !value.trim()) {
-    throw new Error(`${location} must be a non-empty string`);
-  }
-  return value;
-}
-
 function optionalString(value: unknown, location: string): string | undefined {
   if (value === undefined) {
     return undefined;
@@ -187,20 +202,6 @@ function optionalString(value: unknown, location: string): string | undefined {
     throw new Error(`${location} must be a string`);
   }
   return value;
-}
-
-function requireStringArray(value: unknown, location: string): string[] {
-  if (!Array.isArray(value) || value.length === 0) {
-    throw new Error(`${location} must be a non-empty string array`);
-  }
-  return value.map((item, index) => requireString(item, `${location}[${index}]`));
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-  return undefined;
 }
 
 function assertCompiles(pattern: string, ruleId: string): void {

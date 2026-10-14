@@ -1,6 +1,6 @@
 {
   "name": "markdown-gate",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "packageManager": "pnpm@11.25.0",
   "description": "Promptfoo-backed Markdown final-state hygiene gate for AI-authored docs",
   "type": "module",
@@ -56,6 +56,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@types/mdast": "^4.0.4",
+    "mdast-util-from-markdown": "^2.1.0",
+    "mdast-util-gfm": "^3.1.0",
+    "micromark-extension-gfm": "^3.0.0",
+    "micromark-util-decode-string": "^2.0.1",
     "smol-toml": "^1.7.0"
   },
   "devDependencies": {

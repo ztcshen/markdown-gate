@@ -3,6 +3,7 @@ import { parse as parseToml } from "smol-toml";
 import { globMatches, normalizePathForMatch } from "./glob.js";
 import type { DocumentType, Severity } from "./model.js";
 import { parseSeverity, validateDocType } from "./model.js";
+import { assertKnownKeys, requireRecord, requireString } from "./policy-validation.js";
 import { type CompiledRule, loadBuiltinRules, severityDefaultsFromRules } from "./rules.js";
 
 export const DEFAULT_PATH_TYPES: Record<string, DocumentType> = {
@@ -67,45 +68,58 @@ export function loadConfig(path?: string): GateConfig {
   }
 
   const data = parseToml(readFileSync(path, "utf8")) as Record<string, unknown>;
-  const defaults = asRecord(data.defaults);
-  if (typeof defaults?.fail_on === "string") {
-    config.failOn = parseSeverity(defaults.fail_on);
-  }
-
-  const pathTypes = asRecord(data.path_types);
-  if (pathTypes) {
-    for (const [pattern, docType] of Object.entries(pathTypes)) {
-      if (typeof docType !== "string") {
-        throw new Error(`doc_type for pattern ${JSON.stringify(pattern)} must be a string`);
-      }
-      config.pathTypes[pattern] = validateDocType(docType);
+  assertKnownKeys(data, ["defaults", "path_types", "allowed_sections", "severity"], "config");
+  if (data.defaults !== undefined) {
+    const defaults = requireRecord(data.defaults, "defaults");
+    assertKnownKeys(defaults, ["fail_on"], "defaults");
+    if (defaults.fail_on !== undefined) {
+      config.failOn = parseSeverity(requireString(defaults.fail_on, "defaults.fail_on"));
     }
   }
 
-  const allowedSections = asRecord(data.allowed_sections);
-  if (allowedSections) {
+  if (data.path_types !== undefined) {
+    const pathTypes = requireRecord(data.path_types, "path_types");
+    const overrides: Record<string, DocumentType> = {};
+    for (const [pattern, docType] of Object.entries(pathTypes)) {
+      requireString(pattern, "path_types pattern");
+      overrides[pattern] = validateDocType(requireString(docType, `path_types.${pattern}`));
+    }
+    // User patterns take precedence, in declaration order, then built-ins.
+    config.pathTypes = {
+      ...overrides,
+      ...Object.fromEntries(
+        Object.entries(config.pathTypes).filter(([pattern]) => !Object.hasOwn(overrides, pattern)),
+      ),
+    };
+  }
+
+  if (data.allowed_sections !== undefined) {
+    const allowedSections = requireRecord(data.allowed_sections, "allowed_sections");
     for (const [docType, sections] of Object.entries(allowedSections)) {
       const validatedDocType = validateDocType(docType);
       if (!Array.isArray(sections)) {
         throw new Error(`allowed_sections.${docType} must be an array`);
       }
       config.allowedSections[validatedDocType] = new Set(
-        sections.map((section) => normalizeSection(String(section))),
+        sections.map((section) =>
+          normalizeSection(requireString(section, `allowed_sections.${docType}`)),
+        ),
       );
     }
   }
 
-  const severity = asRecord(data.severity);
-  if (severity) {
+  if (data.severity !== undefined) {
+    const severity = requireRecord(data.severity, "severity");
+    const ruleIds = config.rules.map((rule) => rule.id);
     for (const [docType, rules] of Object.entries(severity)) {
       const validatedDocType = validateDocType(docType);
-      const ruleMap = asRecord(rules);
-      if (!ruleMap) {
-        throw new Error(`severity.${docType} must be a table`);
-      }
+      const ruleMap = requireRecord(rules, `severity.${docType}`);
+      assertKnownKeys(ruleMap, ruleIds, `severity.${docType}`);
       config.severities[validatedDocType] ??= {};
       for (const [rule, value] of Object.entries(ruleMap)) {
-        config.severities[validatedDocType][rule] = parseSeverity(String(value));
+        config.severities[validatedDocType][rule] = parseSeverity(
+          requireString(value, `severity.${docType}.${rule}`),
+        );
       }
     }
   }
@@ -146,13 +160,6 @@ export function classifyPath(config: GateConfig, path: string): DocumentType | u
 
 export function normalizeSection(section: string): string {
   return section.trim().toLowerCase().split(/\s+/).join(" ");
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-  return undefined;
 }
 
 export function assertKnownDocTypes(): void {

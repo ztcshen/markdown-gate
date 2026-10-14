@@ -1,11 +1,17 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { runPostToolUse } from "../src/hooks/post-tool-use.js";
 import { runPreToolUse } from "../src/hooks/pre-tool-use.js";
+import { changedMarkdownPaths } from "../src/hooks/shared.js";
 import { runStop } from "../src/hooks/stop.js";
+
+const workspaces: string[] = [];
+afterEach(() => {
+  for (const root of workspaces.splice(0)) rmSync(root, { recursive: true, force: true });
+});
 
 describe("Codex hooks", () => {
   it("blocks publish commands when the explicit scope is dirty", () => {
@@ -76,6 +82,28 @@ describe("Codex hooks", () => {
     expect(JSON.parse(output).decision).toBe("block");
   });
 
+  it.each([
+    { tool_input: "*** Update File: tests/fixtures/api_dirty.md\n" },
+    { input: { patch: "*** Update File: tests/fixtures/api_dirty.md\n" } },
+  ])("handles freeform and structured patch inputs", (input) => {
+    expect(
+      JSON.parse(
+        runPostToolUse(JSON.stringify({ cwd: process.cwd(), tool_name: "apply_patch", ...input })),
+      ).decision,
+    ).toBe("block");
+  });
+
+  it.each(["exec_command", "shell_command", "Bash"])("checks Markdown after %s", (tool_name) => {
+    const workspace = mkdtempSync(join(tmpdir(), "markdown-gate-shell-"));
+    workspaces.push(workspace);
+    execFileSync("git", ["init", "-q"], { cwd: workspace });
+    writeFileSync(join(workspace, "api.md"), "# API\n\nThe previous design.");
+    const output = runPostToolUse(
+      JSON.stringify({ cwd: workspace, tool_name, tool_input: { cmd: "cat > api.md" } }),
+    );
+    expect(JSON.parse(output).decision).toBe("block");
+  });
+
   it("blocks dirty final Markdown messages", () => {
     const output = runStop(
       JSON.stringify({
@@ -102,9 +130,10 @@ describe("Codex hooks", () => {
 
   it("runs from an external git workspace", () => {
     const workspace = mkdtempSync(join(tmpdir(), "markdown-gate-workspace-"));
+    workspaces.push(workspace);
     execFileSync("git", ["init", "-q"], { cwd: workspace });
     const doc = join(workspace, "docs", "api", "withdraw.md");
-    execFileSync("mkdir", ["-p", join(workspace, "docs", "api")]);
+    mkdirSync(join(workspace, "docs", "api"), { recursive: true });
     writeFileSync(
       doc,
       "# Withdraw API\n\nThe previous design used old_field, but it has been removed.\n",
@@ -124,4 +153,48 @@ describe("Codex hooks", () => {
       "rejected_prior_solution",
     );
   });
+
+  it("discovers staged, unstaged, and untracked Unicode paths without quoting loss", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "markdown-gate-paths-"));
+    workspaces.push(workspace);
+    const git = (...args: string[]) => execFileSync("git", args, { cwd: workspace });
+    git("init", "-q");
+    mkdirSync(join(workspace, "docs"));
+    const staged = "docs/接口 草稿.md";
+    writeFileSync(join(workspace, staged), "# API\n\nThe previous design.");
+    git("add", "--", staged);
+    expect(changedMarkdownPaths(workspace)).toEqual([staged]);
+    git(
+      "-c",
+      "user.name=Test",
+      "-c",
+      "user.email=test@example.com",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "-qm",
+      "fixture",
+    );
+    writeFileSync(join(workspace, staged), "# API\n\nThe previous approach.");
+    const untracked = "docs/ draft\nnotes.md";
+    writeFileSync(join(workspace, untracked), "# API\n\nThe previous design.");
+    expect(changedMarkdownPaths(workspace)).toEqual([untracked, staged].sort());
+    expect(changedMarkdownPaths(join(workspace, "docs"))).toEqual(
+      [" draft\nnotes.md", "接口 草稿.md"].sort(),
+    );
+    expect(
+      JSON.parse(
+        runPreToolUse(JSON.stringify({ cwd: workspace, tool_input: { command: "docs publish" } })),
+      ).decision,
+    ).toBe("block");
+  });
+
+  it.each(["null", "[]", "1", "invalid json"])(
+    "handles a malformed hook envelope %s",
+    (payload) => {
+      expect(JSON.parse(runPreToolUse(payload))).toEqual({});
+      expect(JSON.parse(runPostToolUse(payload))).toEqual({});
+      expect(JSON.parse(runStop(payload))).toEqual({});
+    },
+  );
 });

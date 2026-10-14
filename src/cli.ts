@@ -2,6 +2,7 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { type ParsedArgs, parseCliArgs, wantsJson } from "./cli-args.js";
 import { checkPaths, checkText, classifyPaths } from "./gate.js";
 import { runPostToolUse } from "./hooks/post-tool-use.js";
 import { runPreToolUse } from "./hooks/pre-tool-use.js";
@@ -11,29 +12,38 @@ import { parseSeverity, type Severity } from "./model.js";
 import { renderJson, renderText } from "./report.js";
 import { builtinRulePackPath, loadRulePack, validateRulePack } from "./rules.js";
 
-interface ParsedArgs {
-  command?: string;
-  positionals: string[];
-  flags: Record<string, string | boolean>;
-}
-
-export async function main(
-  argv = process.argv.slice(2),
-  stdin = readStdinIfAvailable(),
-): Promise<number> {
-  const args = parseArgs(argv);
+export async function main(argv = process.argv.slice(2), stdin?: string): Promise<number> {
   try {
+    if (!argv.length || ["--help", "-h", "help"].includes(argv[0])) {
+      if (argv.length > 1) throw new Error("help does not accept additional arguments");
+      printHelp();
+      return 0;
+    }
+    if (["--version", "-v"].includes(argv[0])) {
+      if (argv.length !== 1) throw new Error("--version does not accept additional arguments");
+      const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+      console.log(pkg.version);
+      return 0;
+    }
+    const args = parseCliArgs(argv);
+    if (booleanFlag(args, "help")) {
+      printHelp();
+      return 0;
+    }
+    const input =
+      stdin ??
+      (args.command === "hook" || booleanFlag(args, "stdin") ? readStdinIfAvailable() : "");
     if (args.command === "check") {
-      return runCheck(args, stdin);
+      return runCheck(args, input);
     }
     if (args.command === "classify") {
-      return runClassify(args, stdin);
+      return runClassify(args, input);
     }
     if (args.command === "install-codex-hooks") {
       return runInstallCodexHooks(args);
     }
     if (args.command === "hook") {
-      return runHook(args, stdin);
+      return runHook(args, input);
     }
     if (args.command === "rules") {
       return runRules(args);
@@ -41,7 +51,10 @@ export async function main(
     printHelp();
     return 2;
   } catch (error) {
-    console.error(`markdown-gate: ${(error as Error).message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    if (wantsJson(argv))
+      console.log(JSON.stringify({ status: "error", error: { message } }, null, 2));
+    else console.error(`markdown-gate: ${message}`);
     return 2;
   }
 }
@@ -136,31 +149,6 @@ function runRules(args: ParsedArgs): number {
   return 0;
 }
 
-function parseArgs(argv: string[]): ParsedArgs {
-  const [command, ...rest] = argv;
-  const flags: Record<string, string | boolean> = {};
-  const positionals: string[] = [];
-  for (let index = 0; index < rest.length; index += 1) {
-    const value = rest[index];
-    if (!value.startsWith("--")) {
-      positionals.push(value);
-      continue;
-    }
-    const name = value.slice(2);
-    if (["stdin", "global", "force"].includes(name)) {
-      flags[name] = true;
-      continue;
-    }
-    const next = rest[index + 1];
-    if (!next || next.startsWith("--")) {
-      throw new Error(`missing value for --${name}`);
-    }
-    flags[name] = next;
-    index += 1;
-  }
-  return { command, flags, positionals };
-}
-
 function optionalSeverity(value?: string): Severity | undefined {
   return value ? parseSeverity(value) : undefined;
 }
@@ -194,6 +182,14 @@ Usage:
   markdown-gate install-codex-hooks [--repo-root PATH] [--global] [--codex-home PATH] [--force]
   markdown-gate hook pre-tool-use|post-tool-use|stop
   markdown-gate rules check [--rule-pack PATH]
+  markdown-gate --help | --version
+
+Check options:
+  --config PATH       Load an explicit TOML policy
+  --fail-on SEVERITY  Fail on suggestion, warning, or error; off disables failure
+  --waiver-file PATH  Apply validated, scoped JSON waivers
+  --stdin-path PATH   Classify stdin as this path (requires --stdin)
+  --                  Treat remaining arguments as paths
 `);
 }
 

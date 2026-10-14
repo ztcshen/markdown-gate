@@ -17,7 +17,7 @@ export function readPayload(raw: string): HookPayload {
     return {};
   }
   try {
-    return JSON.parse(raw) as HookPayload;
+    return getRecord(JSON.parse(raw)) ?? {};
   } catch {
     return {};
   }
@@ -54,14 +54,13 @@ export function checkMarkdownText(
 
 export function changedMarkdownPaths(cwd: string): string[] {
   const paths = new Set<string>();
-  for (const line of gitLines(cwd, ["diff", "--name-only", "--diff-filter=ACMRT", "HEAD"])) {
-    if (isExistingMarkdown(cwd, line)) {
-      paths.add(line);
-    }
-  }
-  for (const line of gitLines(cwd, ["ls-files", "--others", "--exclude-standard"])) {
-    if (isExistingMarkdown(cwd, line)) {
-      paths.add(line);
+  for (const args of [
+    ["diff", "--relative", "--name-only", "--diff-filter=ACMRT", "-z"],
+    ["diff", "--cached", "--relative", "--name-only", "--diff-filter=ACMRT", "-z"],
+    ["ls-files", "--others", "--exclude-standard", "-z"],
+  ]) {
+    for (const path of gitPaths(cwd, args)) {
+      if (isExistingMarkdown(cwd, path)) paths.add(path);
     }
   }
   return [...paths].sort();
@@ -91,7 +90,9 @@ export function extractMarkdownPaths(payload: HookPayload, cwd: string): string[
     }
   }
 
-  const toolInput = getRecord(payload.tool_input) ?? getRecord(payload.input);
+  const rawInput = payload.tool_input ?? payload.input;
+  if (typeof rawInput === "string") candidates.push(...extractPathsFromPatch(rawInput));
+  const toolInput = getRecord(rawInput);
   if (toolInput) {
     for (const key of ["path", "file_path", "file"]) {
       const value = toolInput[key];
@@ -99,7 +100,10 @@ export function extractMarkdownPaths(payload: HookPayload, cwd: string): string[
         candidates.push(value);
       }
     }
-    candidates.push(...extractPathsFromPatch(String(toolInput.command ?? toolInput.cmd ?? "")));
+    for (const key of ["command", "cmd", "patch", "input"]) {
+      if (typeof toolInput[key] === "string")
+        candidates.push(...extractPathsFromPatch(toolInput[key]));
+    }
   }
 
   if (typeof payload.tool_response === "string") {
@@ -141,7 +145,9 @@ export function extractMulticaTextInputs(cwd: string, command: string): Markdown
 }
 
 export function isBashPayload(payload: HookPayload): boolean {
-  return String(payload.tool_name || "").toLowerCase() === "bash";
+  return ["bash", "exec_command", "shell_command", "shell"].includes(
+    String(payload.tool_name || "").toLowerCase(),
+  );
 }
 
 export function bashMayHaveChangedMarkdown(command: string): boolean {
@@ -165,11 +171,10 @@ export function extractMarkdownFromMessage(message: string): string {
   return index >= 0 ? lines.slice(index).join("\n").trim() : "";
 }
 
-function gitLines(cwd: string, args: string[]): string[] {
+function gitPaths(cwd: string, args: string[]): string[] {
   try {
     return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
-      .split(/\r?\n/)
-      .map((line) => line.trim())
+      .split("\0")
       .filter(Boolean);
   } catch {
     return [];

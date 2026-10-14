@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { classifyDocument } from "./classifier.js";
 import type { GateConfig } from "./config.js";
 import { loadConfig } from "./config.js";
@@ -76,6 +76,7 @@ export function documentFromText(
     text: classified.body,
     docType: classified.docType as DocumentType,
     metadata: classified.metadata,
+    lineOffset: classified.lineOffset,
   };
 }
 
@@ -88,13 +89,17 @@ export function expandPaths(values: string[]): string[] {
     }
     if (stats.isDirectory()) {
       paths.push(...findMarkdownFiles(value));
-    } else if (isMarkdownPath(value)) {
+    } else if (stats.isFile() && isMarkdownPath(value)) {
       paths.push(value);
     } else {
       throw new Error(`not a Markdown file or directory: ${value}`);
     }
   }
-  return paths.sort();
+  const unique = new Map<string, string>();
+  for (const path of paths) {
+    if (!unique.has(resolve(path))) unique.set(resolve(path), path);
+  }
+  return [...unique.values()].sort();
 }
 
 export function isMarkdownPath(value: string): boolean {
@@ -107,7 +112,8 @@ function findMarkdownFiles(directory: string): string[] {
   for (const entry of entries) {
     const fullPath = join(directory, entry.name);
     if (entry.isDirectory()) {
-      files.push(...findMarkdownFiles(fullPath));
+      if (entry.name !== ".git" && entry.name !== "node_modules")
+        files.push(...findMarkdownFiles(fullPath));
     } else if (entry.isFile() && isMarkdownPath(fullPath)) {
       files.push(fullPath);
     }
