@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { checkPaths, checkText, classifyPaths } from "./gate.js";
 import { runPostToolUse } from "./hooks/post-tool-use.js";
 import { runPreToolUse } from "./hooks/pre-tool-use.js";
@@ -196,7 +197,11 @@ Usage:
 `);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (
+  process.argv[1] &&
+  existsSync(process.argv[1]) &&
+  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   main().then((code) => {
     process.exitCode = code;
   });
