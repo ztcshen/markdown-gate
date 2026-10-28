@@ -7,8 +7,8 @@ canonical implementation is TypeScript/Node. Promptfoo is the eval harness for
 regression suites and optional LLM judging.
 
 Use the pinned pnpm version and `pnpm install --frozen-lockfile` for dependencies.
-Keep the dependency policy in `pnpm-workspace.yaml`; Java-keystore evaluation is
-outside this project's supported providers. npm script entrypoints remain valid.
+Keep the dependency policy in `pnpm-workspace.yaml`; Java-keystore and Azure SDK
+evaluation integrations are outside this project's supported providers. npm script entrypoints remain valid.
 
 ## Design Rules
 

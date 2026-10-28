@@ -115,7 +115,7 @@ function runInstallCodexHooks(args: ParsedArgs): number {
   const target = booleanFlag(args, "global")
     ? installGlobalCodexHooks(
         stringFlag(args, "codex-home") ?? "~/.codex",
-        repoRoot,
+        stringFlag(args, "repo-root") ? repoRoot : undefined,
         booleanFlag(args, "force"),
       )
     : installCodexHooks(repoRoot, booleanFlag(args, "force"));

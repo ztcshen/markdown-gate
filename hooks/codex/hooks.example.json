@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/dist/cli.js\" hook pre-tool-use",
+            "command": "'/path/to/node' '/path/to/markdown-gate/dist/cli.js' hook pre-tool-use # markdown-gate",
             "timeout": 30,
             "statusMessage": "Checking Markdown publish gate"
           }
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/dist/cli.js\" hook post-tool-use",
+            "command": "'/path/to/node' '/path/to/markdown-gate/dist/cli.js' hook post-tool-use # markdown-gate",
             "timeout": 60,
             "statusMessage": "Checking Markdown final-state hygiene"
           }
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/dist/cli.js\" hook stop",
+            "command": "'/path/to/node' '/path/to/markdown-gate/dist/cli.js' hook stop # markdown-gate",
             "timeout": 15,
             "statusMessage": "Checking Markdown delivery"
           }

@@ -112,10 +112,12 @@ doc_type: public-api-doc
 ## Promptfoo Evals
 
 Development uses the pinned pnpm version and Node.js 22.22 or newer. The dependency
-policy excludes Promptfoo's optional Java-keystore provider (`jks-js`) because its
-cryptography dependency has an unpatched advisory. Local deterministic providers
-and the configured OpenAI judge remain available. FTP parsing uses a patched
-dependency version; the full remaining development and runtime tree is audited.
+policy excludes the unused Java-keystore provider (`jks-js`) and Azure identity/project
+SDKs from Promptfoo's development dependencies. These provider integrations are outside
+this project's supported evaluation surface; they are not available in this checkout.
+Local deterministic providers and the configured OpenAI judge remain available.
+HTTP body parsing, URI parsing, query-string parsing, and FTP parsing use patched
+dependency versions; the entire remaining development and runtime tree is audited.
 
 Run the deterministic regression suite:
 
@@ -202,15 +204,27 @@ Install project-level hooks:
 
 ```bash
 npm run build
-node dist/cli.js install-codex-hooks --force
+node dist/cli.js install-codex-hooks --repo-root /path/to/project
 ```
 
 Install global hooks:
 
 ```bash
 npm run build
-node dist/cli.js install-codex-hooks --global --force --repo-root "$(pwd)"
+node dist/cli.js install-codex-hooks --global
 ```
+
+Installation adds markdown-gate's three entries while preserving other hooks,
+matchers, events, and top-level settings. Repeating the same installation makes
+no changes. `--force` replaces only recognized markdown-gate entries; a malformed
+existing file or symlink is rejected even with `--force`. Every changed existing file gets a
+sibling `.markdown-gate-<id>.bak` backup before atomic replacement.
+
+Generated commands use the current Node executable and the installing package's
+built CLI, with POSIX shell quoting. A target project does not need its own
+`dist/cli.js`. Reinstall after moving/removing that Node executable or package.
+For global installation, `--repo-root` remains an optional explicit source-package
+override; normally the installed package is discovered automatically.
 
 Hook coverage:
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1
+
+- Refresh the evaluation toolchain and patched transitive dependencies. Local and OpenAI evaluations remain supported; unused Azure identity/project SDK integrations join Java-keystore evaluation outside the supported development provider set.
+
+- Install project hooks using the installing package runtime, including paths containing spaces and shell metacharacters.
+- Merge hook entries without overwriting unrelated integrations; force updates only markdown-gate entries, changed files are backed up and replaced atomically, and repeated installs are idempotent.
+- Reject malformed existing hook files and missing runtime builds before changing configuration.
+
 ## 0.2.0
 
 - Parse CommonMark/GFM prose with mdast, covering headings, tables, lists, quotes, and formatted link labels while excluding code and URL destinations.

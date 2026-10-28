@@ -1,5 +1,10 @@
 overrides:
   'promptfoo>jks-js': '-'
+  'promptfoo>@azure/identity': '-'
+  'promptfoo>@azure/ai-projects': '-'
+  body-parser: 2.4.0
+  fast-uri: 3.1.9
+  qs: 6.16.1
   basic-ftp: 6.2.3
 
 allowBuilds:
